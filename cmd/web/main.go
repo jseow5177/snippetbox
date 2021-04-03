@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 	"path/filepath"
 )
 
@@ -51,6 +52,7 @@ func (nfs neuteredFileSystem) Open(path string) (http.File, error) {
 }
 
 func main() {
+	// Initialize application wide configuration
 	cfg := new(Config)
 
 	// Define a new command-line flag with the name "addr", a default value of ":4000"
@@ -58,6 +60,16 @@ func main() {
 	// will be stored in the addr variable at runtime
 	flag.StringVar(&cfg.Addr, "addr", ":4000", "HTTP network address")
 	flag.StringVar(&cfg.StaticDir, "static-dir", "./ui/static", "Path to static assets")
+
+	// Use log.New() to create a custom logger for writing information messages. This takes
+	// three parameters: the destination to write the logs to (os.Stdout), a string prefix for message
+	// (INFO followed by a tab), and flags to indicate what additional information to include (local date and time).
+	// Note that the flags are joined using the bitwise OR operator |.
+	infoLog := log.New(os.Stdout, "INFO\t", log.Ldate|log.Ltime)
+
+	// Create a logger for writing error messages in the same way, but use stderr as the destination and use
+	// the log.Lshortfile flag to include the relevant file name and line number.
+	errorLog := log.New(os.Stderr, "ERROR\t", log.Ldate|log.Ltime|log.Lshortfile)
 
 	// We use the flag.Parse() function to parse the command-line flag.
 	// This reads in the command-line flag value and assigns it to the addr variable.
@@ -86,10 +98,19 @@ func main() {
 	// "/static" prefix before the request reaches the file server.
 	mux.Handle("/static/", http.StripPrefix("/static/", fileServer))
 
+	// Initialize a new http.Server struct. We set the Addr and Handler fields so that the server
+	// uses the same network address and routes as before, and set the ErrorLog field so that the server
+	// now uses the custom errorLog logger in the event of any problems.
+	srv := &http.Server {
+		Addr: cfg.Addr,
+		ErrorLog: errorLog, // Use custom error logger in the HTTP server
+		Handler: mux,
+	}
+
 	// The value returned from the flag.String() function is a pointer to the flag value,
 	// not the value itself. So we need to dereference the pointer (i.e. prefix it with the * symbol)
 	// before using it.
-	log.Printf("Starting server on %s", cfg.Addr)
-	err := http.ListenAndServe(cfg.Addr, mux)
-	log.Fatal(err)
+	infoLog.Printf("Starting server on %s", cfg.Addr) // Use custom info logger
+	err := srv.ListenAndServe()
+	errorLog.Fatal(err) // Use custom error logger
 }
