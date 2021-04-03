@@ -2,18 +2,25 @@ package main
 
 import (
 	"flag"
-	"fmt"
 	"log"
 	"net/http"
 	"os"
 	"path/filepath"
 )
 
-type Config struct {
+// Define an application struct to hold application-wide dependencies for the application.
+type application struct {
+	errorLog *log.Logger
+	infoLog *log.Logger
+}
+
+// Application-wide configuration
+type config struct {
 	Addr string
 	StaticDir string
 }
 
+// Implement custom file system
 type neuteredFileSystem struct {
 	fs http.FileSystem
 }
@@ -28,12 +35,16 @@ func (nfs neuteredFileSystem) Open(path string) (http.File, error) {
 
 	// Stat returns a FileInfo describing the named file from the file system
 	s, err := f.Stat()
+	if err != nil {
+		return nil, err
+	}
+
 	// Checks if path is a directory
 	if s.IsDir() {
 		// filepath is OS aware. In Windows, filepath.Join uses backslash.
 		// ToSlash() replaces the separator to a slash "/" character.
 		index := filepath.ToSlash(filepath.Join(path, "/index.html"))
-		fmt.Println(index)
+		
 		_, err := nfs.fs.Open(index) // Checks if there is an index.html file
 		if err != nil {
 			closeErr := f.Close() // Close file
@@ -53,13 +64,20 @@ func (nfs neuteredFileSystem) Open(path string) (http.File, error) {
 
 func main() {
 	// Initialize application wide configuration
-	cfg := new(Config)
+	cfg := new(config)
 
 	// Define a new command-line flag with the name "addr", a default value of ":4000"
 	// and some short help text explaining what the flag controls. The value of the flag
 	// will be stored in the addr variable at runtime
 	flag.StringVar(&cfg.Addr, "addr", ":4000", "HTTP network address")
 	flag.StringVar(&cfg.StaticDir, "static-dir", "./ui/static", "Path to static assets")
+
+	// We use the flag.Parse() function to parse the command-line flag.
+	// This reads in the command-line flag value and assigns it to the addr variable.
+	// You need to call this *before* you use the addr variable otherwise it will always
+	// contain the default value of ":4000". If any errors are encountered during parsing
+	// the application will be terminated.
+	flag.Parse()
 
 	// Use log.New() to create a custom logger for writing information messages. This takes
 	// three parameters: the destination to write the logs to (os.Stdout), a string prefix for message
@@ -71,17 +89,15 @@ func main() {
 	// the log.Lshortfile flag to include the relevant file name and line number.
 	errorLog := log.New(os.Stderr, "ERROR\t", log.Ldate|log.Ltime|log.Lshortfile)
 
-	// We use the flag.Parse() function to parse the command-line flag.
-	// This reads in the command-line flag value and assigns it to the addr variable.
-	// You need to call this *before* you use the addr variable otherwise it will always
-	// contain the default value of ":4000". If any errors are encountered during parsing
-	// the application will be terminated.
-	flag.Parse()
+	app := &application{
+		errorLog,
+		infoLog,
+	}
 
 	mux := http.NewServeMux()
-	mux.HandleFunc("/", home) // Works like a "catch-all" route
-	mux.HandleFunc("/snippet", showSnippet)
-	mux.HandleFunc("/snippet/create", createSnippet)
+	mux.HandleFunc("/", app.home)
+	mux.HandleFunc("/snippet", app.showSnippet)
+	mux.HandleFunc("/snippet/create", app.createSnippet)
 
 	// A custom file system that disables directory listing
 	customFs := neuteredFileSystem {
