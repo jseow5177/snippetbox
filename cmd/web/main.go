@@ -5,14 +5,7 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"path/filepath"
 )
-
-// Define an application struct to hold application-wide dependencies for the application.
-type application struct {
-	errorLog *log.Logger
-	infoLog *log.Logger
-}
 
 // Application-wide configuration
 type config struct {
@@ -20,49 +13,17 @@ type config struct {
 	StaticDir string
 }
 
-// Implement custom file system
-type neuteredFileSystem struct {
-	fs http.FileSystem
-}
-
-// Disable directory listings for requests to /static/ with a custom FileSystem
-// https://www.alexedwards.net/blog/disable-http-fileserver-directory-listings
-func (nfs neuteredFileSystem) Open(path string) (http.File, error) {
-	f, err := nfs.fs.Open(path)
-	if err != nil {
-		return nil, err
-	}
-
-	// Stat returns a FileInfo describing the named file from the file system
-	s, err := f.Stat()
-	if err != nil {
-		return nil, err
-	}
-
-	// Checks if path is a directory
-	if s.IsDir() {
-		// filepath is OS aware. In Windows, filepath.Join uses backslash.
-		// ToSlash() replaces the separator to a slash "/" character.
-		index := filepath.ToSlash(filepath.Join(path, "/index.html"))
-		
-		_, err := nfs.fs.Open(index) // Checks if there is an index.html file
-		if err != nil {
-			closeErr := f.Close() // Close file
-			if closeErr != nil {
-				log.Println(closeErr)
-				return nil, closeErr
-			}
-			
-			// Return error if no index.html instead of showing directory listing
-			// error will be transformed into a 404 Not Found by http.FileServer
-			return nil, err
-		}
-	}
-
-	return f, nil
+// Define an application struct to hold application-wide dependencies
+type application struct {
+	errorLog *log.Logger
+	infoLog *log.Logger
+	config *config
 }
 
 func main() {
+
+	// ========== Parse runtime configuration settings for the application ========== //
+
 	// Initialize application wide configuration
 	cfg := new(config)
 
@@ -79,6 +40,8 @@ func main() {
 	// the application will be terminated.
 	flag.Parse()
 
+	// ========== Create custom info and error loggers ========== //
+
 	// Use log.New() to create a custom logger for writing information messages. This takes
 	// three parameters: the destination to write the logs to (os.Stdout), a string prefix for message
 	// (INFO followed by a tab), and flags to indicate what additional information to include (local date and time).
@@ -89,30 +52,15 @@ func main() {
 	// the log.Lshortfile flag to include the relevant file name and line number.
 	errorLog := log.New(os.Stderr, "ERROR\t", log.Ldate|log.Ltime|log.Lshortfile)
 
+	// ========== Establish app dependencies for routes and handlers ========== //
+
 	app := &application{
-		errorLog,
-		infoLog,
+		errorLog: errorLog,
+		infoLog: infoLog,
+		config: cfg, // Pointer to app config
 	}
 
-	mux := http.NewServeMux()
-	mux.HandleFunc("/", app.home)
-	mux.HandleFunc("/snippet", app.showSnippet)
-	mux.HandleFunc("/snippet/create", app.createSnippet)
-
-	// A custom file system that disables directory listing
-	customFs := neuteredFileSystem {
-		fs: http.Dir(cfg.StaticDir),
-	}
-
-	// Create a file server which serves files out of the "./ui/static" directory.
-	// Note that the path given to the http.Dir function is relative to the project
-	// directory root.
-	fileServer := http.FileServer(customFs)
-
-	// Use the mux.Handle() function to register the file server as the handler for
-	// all URL paths that start with "/static/". For matching paths, we strip the
-	// "/static" prefix before the request reaches the file server.
-	mux.Handle("/static/", http.StripPrefix("/static/", fileServer))
+	// ========== Create and run HTTP server ========== //
 
 	// Initialize a new http.Server struct. We set the Addr and Handler fields so that the server
 	// uses the same network address and routes as before, and set the ErrorLog field so that the server
@@ -120,7 +68,7 @@ func main() {
 	srv := &http.Server {
 		Addr: cfg.Addr,
 		ErrorLog: errorLog, // Use custom error logger in the HTTP server
-		Handler: mux,
+		Handler: app.routes(), // Return ServeMux with application routes
 	}
 
 	// The value returned from the flag.String() function is a pointer to the flag value,
