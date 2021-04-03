@@ -2,8 +2,10 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"net/http"
 	"strconv"
+	"text/template"
 )
 
 func home(w http.ResponseWriter, r *http.Request) {
@@ -16,8 +18,33 @@ func home(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Header().Set("Cache-Control", "public, max-age=31536000")
-	w.Write([]byte("Hello from Snippetbox"))
+	// Initialize a slice containing the paths to the two files. Note that the
+	// home.page.html file must be the *first* file in the slice
+	files := []string{
+		"./ui/html/home.page.html", // Home page
+		"./ui/html/footer.partial.html", // Footer partial
+		"./ui/html/base.layout.html", // Base template
+	}
+
+	// Use the template.ParseFiles() function to read the template file into a
+	// template set. If there is an error, we log the detailed error message and use
+	// the http.Error() function to send a generic 500 Internal Server Error response
+	// to the user. Note that we can pass the slice of file paths as a variadic parameter.
+	ts, err := template.ParseFiles(files...)
+	if err != nil {
+		log.Println(err.Error())
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+
+	// We then use the Execute() method on the template set to write the template content
+	// as the response body. The last parameter to Execute() represents any dynamic data
+	// that we want to pass in, which for now we'll set as nil.
+	err = ts.Execute(w, nil)
+	if err != nil {
+		log.Println(err.Error())
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+	}
 }
 
 func showSnippet(w http.ResponseWriter, r *http.Request) {
