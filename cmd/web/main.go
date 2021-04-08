@@ -1,10 +1,15 @@
 package main
 
 import (
+	"database/sql"
 	"flag"
+	"fmt"
 	"log"
 	"net/http"
 	"os"
+
+	_ "github.com/go-sql-driver/mysql"
+	"github.com/joho/godotenv"
 )
 
 // Application-wide configuration
@@ -22,24 +27,6 @@ type application struct {
 
 func main() {
 
-	// ========== Parse runtime configuration settings for the application ========== //
-
-	// Initialize application wide configuration
-	cfg := new(config)
-
-	// Define a new command-line flag with the name "addr", a default value of ":4000"
-	// and some short help text explaining what the flag controls. The value of the flag
-	// will be stored in the addr variable at runtime
-	flag.StringVar(&cfg.Addr, "addr", ":4000", "HTTP network address")
-	flag.StringVar(&cfg.StaticDir, "static-dir", "./ui/static", "Path to static assets")
-
-	// We use the flag.Parse() function to parse the command-line flag.
-	// This reads in the command-line flag value and assigns it to the addr variable.
-	// You need to call this *before* you use the addr variable otherwise it will always
-	// contain the default value of ":4000". If any errors are encountered during parsing
-	// the application will be terminated.
-	flag.Parse()
-
 	// ========== Create custom info and error loggers ========== //
 
 	// Use log.New() to create a custom logger for writing information messages. This takes
@@ -51,6 +38,50 @@ func main() {
 	// Create a logger for writing error messages in the same way, but use stderr as the destination and use
 	// the log.Lshortfile flag to include the relevant file name and line number.
 	errorLog := log.New(os.Stderr, "ERROR\t", log.Ldate|log.Ltime|log.Lshortfile)
+
+	// ========== Load env variables ========== //
+	err := godotenv.Load()
+	if err != nil {
+		errorLog.Fatal("Error loading .env file")
+	}
+
+	pwd := os.Getenv("MYSQL_PASSWORD")
+
+	// ========== Parse runtime configuration settings for the application ========== //
+
+	// Initialize application wide configuration
+	cfg := new(config)
+
+	// Define a new command-line flag with the name "addr", a default value of ":4000"
+	// and some short help text explaining what the flag controls. The value of the flag
+	// will be stored in the addr variable at runtime.
+	flag.StringVar(&cfg.Addr, "addr", ":4000", "HTTP network address")
+
+	// Define a command-line flag for path to static directory.
+	flag.StringVar(&cfg.StaticDir, "static-dir", "./ui/static", "Path to static assets")
+
+	// Define a command-line flag for MySQL DSN string.
+	// DSN string for the driver has the format of username:password@protocol(address)/dbname?param=value
+	// Default value of protocol is 'tcp'.
+	// Default value of address is 'localhost:3306'.
+	// parseTime param changes the output type of DATE and DATETIME values to Go's time.Time
+	dsn := flag.String("dsn", fmt.Sprintf("web:%s@tcp(localhost:3306)/snippetbox?parseTime=true", pwd), "MySQL data source name")
+
+	// We use the flag.Parse() function to parse the command-line flag.
+	// This reads in the command-line flag value and assigns it to the addr variable.
+	// You need to call this *before* you use the addr variable otherwise it will always
+	// contain the default value of ":4000". If any errors are encountered during parsing
+	// the application will be terminated.
+	flag.Parse()
+
+	// ========== Connect to MySQL DB ========== //
+	db, err := openDB(*dsn)
+	if err != nil {
+		errorLog.Fatal(err)
+	}
+
+	// Defer a call to db.Close(), so the connection pool is closed before the main() function exits.
+	defer db.Close();
 
 	// ========== Establish app dependencies for routes and handlers ========== //
 
@@ -75,6 +106,27 @@ func main() {
 	// not the value itself. So we need to dereference the pointer (i.e. prefix it with the * symbol)
 	// before using it.
 	infoLog.Printf("Starting server on %s", cfg.Addr) // Use custom info logger
-	err := srv.ListenAndServe()
+	err = srv.ListenAndServe()
 	errorLog.Fatal(err) // Use custom error logger
+}
+
+// openDB() wraps sql.Open and returns a sql.DB connection pool
+// for a given DSN
+func openDB(dsn string) (*sql.DB, error) {
+	// sql.Open() doesn't create any connections, all it does is initialize the pool of connections for future use.
+	// Actual connections to the database are established lazily, as and when needed for the first time.
+	// To verify that everything is set up correct, we need to use db.Ping() to create a connection and check for errors.
+	db, err := sql.Open("mysql", dsn)
+	if err != nil {
+		return nil, err
+	}
+
+	err = db.Ping(); // Use db.Ping() to test if connection is successful
+	if err != nil {
+		return nil, err
+	}
+
+	// sql.DB is not a connection.
+	// It is a pool of connections in the background managed by Go's database/sql package.
+	return db, nil
 }
