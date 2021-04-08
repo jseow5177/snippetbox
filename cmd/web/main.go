@@ -10,6 +10,7 @@ import (
 
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/joho/godotenv"
+	"github.com/jseow5177/snippetbox/pkg/models/mysql"
 )
 
 // Application-wide configuration
@@ -23,6 +24,7 @@ type application struct {
 	errorLog *log.Logger
 	infoLog *log.Logger
 	config *config
+	snippets *mysql.SnippetModel
 }
 
 func main() {
@@ -89,6 +91,7 @@ func main() {
 		errorLog: errorLog,
 		infoLog: infoLog,
 		config: cfg, // Pointer to app config
+		snippets: &mysql.SnippetModel{DB: db}, // Pointer to SnippetModel
 	}
 
 	// ========== Create and run HTTP server ========== //
