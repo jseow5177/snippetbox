@@ -42,6 +42,6 @@
 -- GRANT SELECT, INSERT, UPDATE ON snippetbox.* TO 'web'@'localhost';
 
 -- Set a dummy password for user web
--- ALTER USER 'web'@'localhost' IDENTIFIED BY 'web1234';
+-- ALTER USER 'web'@'localhost' IDENTIFIED BY '<enter password>';
 
 -- More on connect user to database: https://dev.mysql.com/doc/mysql-shell/8.0/en/mysql-shell-connection-using-parameters.html
