@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"flag"
 	"fmt"
+	"html/template"
 	"log"
 	"net/http"
 	"os"
@@ -25,6 +26,7 @@ type application struct {
 	infoLog *log.Logger
 	config *config
 	snippets *mysql.SnippetModel
+	templateCache map[string]*template.Template
 }
 
 func main() {
@@ -85,6 +87,12 @@ func main() {
 	// Defer a call to db.Close(), so the connection pool is closed before the main() function exits.
 	defer db.Close();
 
+	// ========== Create template cache ========== //
+	tc, err := newTemplateCache("./ui/html/")
+	if err != nil {
+		errorLog.Fatal(err)
+	}
+
 	// ========== Establish app dependencies for routes and handlers ========== //
 
 	app := &application{
@@ -92,6 +100,7 @@ func main() {
 		infoLog: infoLog,
 		config: cfg, // Pointer to app config
 		snippets: &mysql.SnippetModel{DB: db}, // Pointer to SnippetModel
+		templateCache: tc,
 	}
 
 	// ========== Create and run HTTP server ========== //
