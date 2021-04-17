@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/jseow5177/snippetbox/pkg/forms"
 	"github.com/jseow5177/snippetbox/pkg/models"
 )
 
@@ -16,6 +17,7 @@ type templateData struct {
 	Snippet *models.Snippet
 	Snippets []*models.Snippet
 	CurrentYear int
+	Form *forms.Form
 }
 
 // formatDate() is a custom template function that returns a nicely formatted
