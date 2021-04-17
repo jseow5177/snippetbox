@@ -52,14 +52,27 @@ func (app *application) showSnippet(w http.ResponseWriter, r *http.Request) {
 }
 
 func (app *application) createSnippetForm(w http.ResponseWriter, r *http.Request) {
-	w.Write([]byte("Create snippet form..."))
+	app.render(w, r, "create.page.html", nil)
 }
 
 func (app *application) createSnippet(w http.ResponseWriter, r *http.Request) {
-	title := "O snail"
-	content := "O snail\nClimb Mount Fuji,\nBut slowly, slowly!\n\n– Kobayashi Issa"
-	expires := "7"
+	// r.ParseForm() adds any data in POST request bodies to the r.PostForm map.
+	// This also works for PUT and PATCH methods.
+	// The Content-Type must be application/x-wwww-form-urlencoded.
+	// If there is large file data, use ParseMultipartForm where the Content-Type is 
+	// multipart/form-data.
+	err := r.ParseForm()
+	if err != nil {
+		app.clientError(w, http.StatusBadRequest)
+		return
+	}
 
+	// Use the r.PostForm.Get() method to retrieve the relevant data fields.
+	title := r.PostForm.Get("title")
+	content := r.PostForm.Get("content")
+	expires := r.PostForm.Get("expires")
+
+	// Create a new snippet record in the database using the form data.
 	id, err := app.snippets.Insert(title, content, expires)
 	if err != nil {
 		app.serverError(w, err)
