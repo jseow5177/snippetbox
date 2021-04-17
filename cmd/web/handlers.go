@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/jseow5177/snippetbox/pkg/forms"
 	"github.com/jseow5177/snippetbox/pkg/models"
 )
 
@@ -52,7 +53,10 @@ func (app *application) showSnippet(w http.ResponseWriter, r *http.Request) {
 }
 
 func (app *application) createSnippetForm(w http.ResponseWriter, r *http.Request) {
-	app.render(w, r, "create.page.html", nil)
+	app.render(w, r, "create.page.html", &templateData{
+		// Pass a new empty forms.Form object to the template.
+		Form: forms.New(nil),
+	})
 }
 
 func (app *application) createSnippet(w http.ResponseWriter, r *http.Request) {
@@ -67,13 +71,25 @@ func (app *application) createSnippet(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Use the r.PostForm.Get() method to retrieve the relevant data fields.
-	title := r.PostForm.Get("title")
-	content := r.PostForm.Get("content")
-	expires := r.PostForm.Get("expires")
+	// Create a new Form struct containing the POSTed data from the form,
+	// then use the validation methods to check the content.
+	f := forms.New(r.PostForm)
+	f.Required("title", "content", "expires")
+	f.MaxLength("title", 100)
+	f.PermittedValues("expires", "7", "1", "365")
 
-	// Create a new snippet record in the database using the form data.
-	id, err := app.snippets.Insert(title, content, expires)
+	// If the form isn't valid, redisplay the template passing in the form.Form object as the data.
+	if !f.Valid() {
+		app.render(w, r, "create.page.html", &templateData{
+			Form: f,
+		})
+		return
+	}
+
+	// Because the form data (with type url.Values) has been annonymously embedded
+	// in the form.Form struct, we can use the Get() method to retrieve the validated value
+	// from a particular form field.
+	id, err := app.snippets.Insert(f.Get("title"), f.Get("content"), f.Get("expires"))
 	if err != nil {
 		app.serverError(w, err)
 		return
