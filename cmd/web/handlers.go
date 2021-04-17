@@ -10,15 +10,6 @@ import (
 )
 
 func (app *application) home(w http.ResponseWriter, r *http.Request) {
-	// Check if the current request URL path exactly matches "/". If it doesn't, use
-	// the http.NotFound() function to send a 404 response to the client.
-	// Importantly, we then return from the handler. If we don't return the handler
-	// would keep executing.
-	if r.URL.Path != "/" {
-		app.notFound(w)
-		return
-	}
-
 	s, err := app.snippets.Latest()
 	if err != nil {
 		app.serverError(w, err)
@@ -32,11 +23,12 @@ func (app *application) home(w http.ResponseWriter, r *http.Request) {
 }
 
 func (app *application) showSnippet(w http.ResponseWriter, r *http.Request) {
-	// Extract the vakue of id parameter from query string.
+	// Pat doesn't strip thecolon from the named capture key, so we need to get
+	// the value of ":id" from the query string instead of "id".
 	// Try to convert it to an integer using the strconv.Atoi() function.
 	// If it can't be converted to an integer, or the value if less than 1, return a
-	// 404 page not found response
-	id, err := strconv.Atoi(r.URL.Query().Get("id"))
+	// 404 page not found response.
+	id, err := strconv.Atoi(r.URL.Query().Get(":id"))
 	if err != nil || id < 1 {
 		app.notFound(w)
 		return
@@ -59,17 +51,11 @@ func (app *application) showSnippet(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-func (app *application) createSnippet(w http.ResponseWriter, r *http.Request) {
-	// Use r.Method to check whether the request is using POST or not. Note that
-	// http.MethodPost is a constant equal to the string "POST"
-	if r.Method != http.MethodPost {
-		// Add an "Allow: POST" header.
-		// Must be before w.WriteHeader and w.Write
-		w.Header().Set("Allow", http.MethodPost)
-		app.clientError(w, http.StatusMethodNotAllowed)
-		return
-	}
+func (app *application) createSnippetForm(w http.ResponseWriter, r *http.Request) {
+	w.Write([]byte("Create snippet form..."))
+}
 
+func (app *application) createSnippet(w http.ResponseWriter, r *http.Request) {
 	title := "O snail"
 	content := "O snail\nClimb Mount Fuji,\nBut slowly, slowly!\n\n– Kobayashi Issa"
 	expires := "7"
@@ -81,5 +67,5 @@ func (app *application) createSnippet(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Redirect user to the page of newly created Snippet
-	http.Redirect(w, r, fmt.Sprintf("/snippet?id=%d", id), http.StatusSeeOther)
+	http.Redirect(w, r, fmt.Sprintf("/snippet/%d", id), http.StatusSeeOther)
 }
