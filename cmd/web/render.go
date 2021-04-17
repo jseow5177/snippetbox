@@ -23,7 +23,7 @@ func (app *application) render(w http.ResponseWriter, r *http.Request, name stri
 	// Write the template into buffer instead of straight into the http.ResponseWriter.
 	// This serves as a 'trial render' to catch runtime errors in template rendering.
 	// If there is an error, we call the serverError helper method and return.
-	err := ts.Execute(buf, td)
+	err := ts.Execute(buf, app.addDefaultData(td, r))
 	if err != nil {
 		app.serverError(w, err)
 		return

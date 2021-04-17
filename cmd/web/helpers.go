@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 	"runtime/debug"
+	"time"
 )
 
 // The serverError helper writes an error message and stack trace to the errorLog,
@@ -33,4 +34,16 @@ func (app *application) clientError(w http.ResponseWriter, status int) {
 // to the user
 func (app *application) notFound(w http.ResponseWriter) {
 	app.clientError(w, http.StatusNotFound)
+}
+
+// addDefaultData() injects common dynamic data into our application
+// by passing them into an instance of a templateData struct
+func (app *application) addDefaultData(td *templateData, r*http.Request) *templateData {
+	if td == nil {
+		td = &templateData{}
+	}
+
+	td.CurrentYear = time.Now().Year()
+
+	return td
 }
