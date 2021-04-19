@@ -8,8 +8,10 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"time"
 
 	_ "github.com/go-sql-driver/mysql"
+	"github.com/golangcollege/sessions"
 	"github.com/joho/godotenv"
 	"github.com/jseow5177/snippetbox/pkg/models/mysql"
 )
@@ -27,6 +29,7 @@ type application struct {
 	config *config
 	snippets *mysql.SnippetModel
 	templateCache map[string]*template.Template
+	session *sessions.Session
 }
 
 func main() {
@@ -50,6 +53,7 @@ func main() {
 	}
 
 	pwd := os.Getenv("MYSQL_PASSWORD")
+	secret := os.Getenv("SECRET")
 
 	// ========== Parse runtime configuration settings for the application ========== //
 
@@ -93,6 +97,13 @@ func main() {
 		errorLog.Fatal(err)
 	}
 
+	// ========== Initialize a new session and save into app dependency ========== //
+	// Initialize a new session manager, pass in the secret key as the parameter.
+	// sessions.New() returns a pointer to a Session struct.
+	// Configure the session such that it expires after 12 hours.
+	session := sessions.New([]byte(secret))
+	session.Lifetime = 12 * time.Hour
+
 	// ========== Establish app dependencies for routes and handlers ========== //
 
 	app := &application{
@@ -101,6 +112,7 @@ func main() {
 		config: cfg, // Pointer to app config
 		snippets: &mysql.SnippetModel{DB: db}, // Pointer to SnippetModel
 		templateCache: tc,
+		session: session, // Add session manager to application dependencies
 	}
 
 	// ========== Create and run HTTP server ========== //
