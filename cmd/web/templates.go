@@ -14,10 +14,11 @@ import (
 // This is required because Go's html/template package allows us to pass in one
 // - and only one - item of dynamic data when rendering a template.
 type templateData struct {
+	CurrentYear int
+	Flash string // Flash message on successful POST
+	Form *forms.Form
 	Snippet *models.Snippet
 	Snippets []*models.Snippet
-	CurrentYear int
-	Form *forms.Form
 }
 
 // formatDate() is a custom template function that returns a nicely formatted
