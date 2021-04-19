@@ -54,16 +54,21 @@ func (app *application) routes() http.Handler {
 	// Create a middleware chain containing our 'standard' middleware
 	// which will be used for every request our application receives
 	standardMiddleware := alice.New(app.recoverPanic, app.logRequest, secureHeaders)
+
+	// Create a middleware chain containing the middleware specific to 
+	// our dynamic application routes.
+	// Enable is a middleware which loads and saves session data to and from the session cookie.
+	dynamicMiddleware := alice.New(app.session.Enable)
 	
 	mux := pat.New()
 	// Pat matches patterns in the order that they are registered.
 	// Hence, the exact match must be registered before any wildcard routes.
 	// Pat doesn't allow handler functions to be registered. Hence, they need to be
 	// converted using the http.HandlerFunc() adapter.
-	mux.Get("/", http.HandlerFunc(app.home)) // Match requests where the URL path is exactly "/"
-	mux.Get("/snippet/create", http.HandlerFunc(app.createSnippetForm))
-	mux.Post("/snippet/create", http.HandlerFunc(app.createSnippet))
-	mux.Get("/snippet/:id", http.HandlerFunc(app.showSnippet))
+	mux.Get("/", dynamicMiddleware.ThenFunc(app.home)) // Match requests where the URL path is exactly "/"
+	mux.Get("/snippet/create", dynamicMiddleware.ThenFunc(app.createSnippetForm))
+	mux.Post("/snippet/create", dynamicMiddleware.ThenFunc(app.createSnippet))
+	mux.Get("/snippet/:id", dynamicMiddleware.ThenFunc(app.showSnippet))
 
 	// A custom file system that disables directory listing
 	customFs := neuteredFileSystem {
