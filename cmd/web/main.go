@@ -130,6 +130,10 @@ func main() {
 	// not the value itself. So we need to dereference the pointer (i.e. prefix it with the * symbol)
 	// before using it.
 	infoLog.Printf("Starting server on %s", cfg.Addr) // Use custom info logger
+	// Use the ListenAndServeTLS() method to start the HTTPS server. We
+	// pass in the paths to the TLS certificatr and corresponding private key
+	// as the two parameters.
+	//err = srv.ListenAndServeTLS("./tls/cert.pem", "./tls/key.pem")
 	err = srv.ListenAndServe()
 	errorLog.Fatal(err) // Use custom error logger
 }
