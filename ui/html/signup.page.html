@@ -1,0 +1,38 @@
+{{ template "base" . }}
+
+{{ define "title" }}Signup{{ end }}
+
+{{ define "main" }}
+<form action="/user/signup" method="POST" novalidate>
+  {{ with .Form }}
+    <div>
+      <label>Name:</label>
+      {{ with .Errors.Get "name" }}
+        <label class="error">{{ . }}</label>
+      {{ end }}
+      <input type="text" name="name" value='{{ .Get "name" }}'>
+    </div>
+    <div>
+      <label>Email:</label>
+      {{ with .Errors.Get "email" }}
+        <label class="error">{{ . }}</label>
+      {{ end }}
+      <input type="email" name="email" value='{{ .Get "email" }}'>
+    </div>
+    <div>
+      <label>Password:</label>
+      {{ with .Errors.Get "password" }}
+        <label class="error">{{ . }}</label>
+      {{ end }}
+      <!-- Password will not be redisplayed if the form fails validation. -->
+      <!-- If a form is rejected by Server-Side validation, the password should be blanked out. -->
+      <!-- This is to prevent any risk of the browser caching the plain-text password entered by the user. -->
+      <!-- See https://ux.stackexchange.com/questions/20418/when-form-submission-fails-password-field-gets-blanked-why-is-that-the-case -->
+      <input type="password" name="password">
+    </div>
+    <div>
+      <input type="submit" value="Signup">
+    </div>
+  {{ end }}
+</form>
+{{ end }}
