@@ -28,6 +28,7 @@ type application struct {
 	infoLog *log.Logger
 	config *config
 	snippets *mysql.SnippetModel
+	users *mysql.UserModel
 	templateCache map[string]*template.Template
 	session *sessions.Session
 }
@@ -111,6 +112,7 @@ func main() {
 		infoLog: infoLog,
 		config: cfg, // Pointer to app config
 		snippets: &mysql.SnippetModel{DB: db}, // Pointer to SnippetModel
+		users: &mysql.UserModel{DB: db}, // Pointer to UserModel
 		templateCache: tc,
 		session: session, // Add session manager to application dependencies
 	}
