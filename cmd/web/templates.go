@@ -14,6 +14,7 @@ import (
 // This is required because Go's html/template package allows us to pass in one
 // - and only one - item of dynamic data when rendering a template.
 type templateData struct {
+	CSRFToken string
 	CurrentYear int
 	Flash string // Flash message on successful POST
 	Form *forms.Form
