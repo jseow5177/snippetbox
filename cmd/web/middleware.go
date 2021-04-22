@@ -33,6 +33,7 @@ func secureHeaders(next http.Handler) http.Handler {
 	})
 }
 
+// A middleware to recover the goroutine handling a request from panic
 func (app *application) recoverPanic(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Create a deferred function which will always be called in the event of a panic
@@ -49,6 +50,23 @@ func (app *application) recoverPanic(next http.Handler) http.Handler {
 				app.serverError(w, fmt.Errorf("%s", err))
 			}
 		}()
+
+		next.ServeHTTP(w, r)
+	})
+}
+
+// A middleware to prevent unauthenticated user from entering routes that require authentication
+func (app *application) requireAuthentication(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if !app.isAuthenticated(r) {
+			http.Redirect(w, r, "/user/login", http.StatusSeeOther)
+			return
+		}
+
+		// Otherwise set the "Cache-Control: no-store" header so that pages
+		// require authentication are not stored in the users browser cache
+		// (or other intermediary cache)
+		w.Header().Add("Cache-Control", "no-store")
 
 		next.ServeHTTP(w, r)
 	})
