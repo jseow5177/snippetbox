@@ -19,6 +19,7 @@ type templateData struct {
 	Form *forms.Form
 	Snippet *models.Snippet
 	Snippets []*models.Snippet
+	IsAuthenticated bool
 }
 
 // formatDate() is a custom template function that returns a nicely formatted
