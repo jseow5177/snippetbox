@@ -59,7 +59,8 @@ func (app *application) routes() http.Handler {
 	// our dynamic application routes.
 	// Enable is a middleware which loads and saves session data to and from the session cookie.
 	// noSurf is a middleware to protect against CSRF attacks.
-	dynamicMiddleware := alice.New(app.session.Enable, noSurf)
+	// authenticate checks if user is authenticated.
+	dynamicMiddleware := alice.New(app.session.Enable, noSurf, app.authenticate)
 	
 	mux := pat.New()
 	// Pat matches patterns in the order that they are registered.
