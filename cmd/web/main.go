@@ -16,6 +16,9 @@ import (
 	"github.com/jseow5177/snippetbox/pkg/models/mysql"
 )
 
+type contextKey string
+const contextKeyIsAuthenticated = contextKey("isAuthenticated")
+
 // Application-wide configuration
 type config struct {
 	Addr string
