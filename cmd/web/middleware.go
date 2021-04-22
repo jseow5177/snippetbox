@@ -1,9 +1,12 @@
 package main
 
 import (
+	"context"
+	"errors"
 	"fmt"
 	"net/http"
 
+	"github.com/jseow5177/snippetbox/pkg/models"
 	"github.com/justinas/nosurf"
 )
 
@@ -54,6 +57,45 @@ func (app *application) recoverPanic(next http.Handler) http.Handler {
 		}()
 
 		next.ServeHTTP(w, r)
+	})
+}
+
+// A middleware to authenticate user by checking if
+// 1. User session has a authenticatedUserID
+// 2. User exists in database (valid user id)
+// 3. User is active
+// - When we don't have an authenticated-and-active user, we pass the original and
+//   unchanged *http.Request to the next handler in the chain.
+// - When we do have an authenticated-and-active user, we create a copy of the request
+//   with a contentKeyIsAuthenticated key and true value stored in the request context.
+//   We then pass this copy of the *http.Request to the next handler in the chain.
+func (app *application) authenticate(next http.Handler) http.Handler {
+	return http.HandlerFunc(func ( w http.ResponseWriter, r *http.Request) {
+		// Check if an authenticatedUserID value exists in the session
+		exists := app.session.Exists(r, "authenticatedUserID")
+		if !exists {
+			next.ServeHTTP(w, r)
+			return
+		}
+
+		// Fetch the details of the currebt==nt user from the database. If no matching
+		// record is found, or the current user has been deactivated, remove (invalid)
+		// authenticatedUserID value from their session.
+		user, err := app.users.Get(app.session.GetInt(r, "authenticatedUserID"))
+		if errors.Is(err, models.ErrNoRecord) || !user.Active {
+			app.session.Remove(r, "authenticatedUserID")
+			next.ServeHTTP(w, r)
+			return
+		} else if err != nil {
+			app.serverError(w, err)
+			return
+		}
+
+		// Otherwise, the request is coming from an active, authenticated user.
+		// We create a new copy of the request, with a true boolean value added to the request context to indicate
+		// that the user is authenticated. Then, we call the next handler in the chain *using the new copy of the request*
+		ctx := context.WithValue(r.Context(), contextKeyIsAuthenticated, true)
+		next.ServeHTTP(w, r.WithContext(ctx))
 	})
 }
 
