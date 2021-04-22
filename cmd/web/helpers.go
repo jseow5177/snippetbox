@@ -5,6 +5,8 @@ import (
 	"net/http"
 	"runtime/debug"
 	"time"
+
+	"github.com/justinas/nosurf"
 )
 
 // The serverError helper writes an error message and stack trace to the errorLog,
@@ -53,6 +55,9 @@ func (app *application) addDefaultData(td *templateData, r *http.Request) *templ
 
 	// Add the authentication status to the template data
 	td.IsAuthenticated = app.isAuthenticated(r)
+
+	// Add the CSRF token to the templateData struct
+	td.CSRFToken = nosurf.Token(r)
 
 	return td
 }
