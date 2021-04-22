@@ -107,6 +107,7 @@ func main() {
 	// Configure the session such that it expires after 12 hours.
 	session := sessions.New([]byte(secret))
 	session.Lifetime = 12 * time.Hour
+	session.Secure = true // Sent only through HTTPS, never with unsecured HTTP (except on localhost)
 
 	// ========== Establish app dependencies for routes and handlers ========== //
 

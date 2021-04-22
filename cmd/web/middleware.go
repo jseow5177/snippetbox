@@ -124,7 +124,7 @@ func noSurf(next http.Handler) http.Handler {
 	csrfHandler.SetBaseCookie(http.Cookie{
 		HttpOnly: true, // So that cookie is not accessible by scripts
 		Path: "/", // The URL path that must exist in the requested URL in order to send the Cookie header
-		Secure: true, // Sent only through HTTPS
+		Secure: true, // Sent only through HTTPS, never with unsecured HTTP (except on localhost)
 	})
 
 	return csrfHandler
