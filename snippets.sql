@@ -46,3 +46,4 @@ GRANT SELECT, INSERT, UPDATE ON snippetbox.* TO 'web'@'localhost';
 ALTER USER 'web'@'localhost' IDENTIFIED BY '<enter password>';
 
 -- More on connect user to database: https://dev.mysql.com/doc/mysql-shell/8.0/en/mysql-shell-connection-using-parameters.html
+-- mysql --user=root --password=<>
